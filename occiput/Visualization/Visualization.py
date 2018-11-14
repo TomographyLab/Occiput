@@ -6,12 +6,21 @@
 from PIL import Image
 import numpy
 import uuid
+import h5py
 
 from occiput.global_settings import is_gpu_enabled
-from DisplayNode import DisplayNode
+#from DisplayNode import DisplayNode
 from . import Colors as C
 from IPython.display import HTML, display, Javascript
 from .ipynb import is_in_ipynb
+
+try:
+    from ..Functional.NiftyRec import SPECT_project_parallelholes as projection
+except:
+    has_NiftyPy = False
+    print("Please install NiftyPy")
+else:
+    has_NiftyPy = True
 
 
 class InstallationError(Exception):
@@ -374,15 +383,6 @@ def rad_to_deg(rad):
     return rad * 180.0 / numpy.pi
 
 
-try:
-    from NiftyPy.NiftyRec import SPECT_project_parallelholes as projection
-except:
-    has_NiftyPy = False
-    print("Please install NiftyPy")
-else:
-    has_NiftyPy = True
-
-
 class SPECT_Projection:
     """SPECT projection object. """
 
@@ -391,7 +391,7 @@ class SPECT_Projection:
 
     def get_data(self):
         """Returns the raw projection data (note that is can be accessed also as self.data ). """
-        return data
+        return self.data
 
     def save_to_file(self, filename):
         h5f = h5py.File(filename, "w")

@@ -13,11 +13,11 @@ from occiput.Core import Image3D
 from occiput.Visualization import MultipleVolumes
 
 try:
-    from NiftyPy.NiftyReg import resample_image_rigid
-    from NiftyPy.NiftyReg import deriv_intensity_wrt_space_rigid
-    from NiftyPy.NiftyReg import deriv_intensity_wrt_transformation_rigid
-    from NiftyPy.NiftyReg import deriv_ssd_wrt_transformation_rigid
-    from NiftyPy.NiftyReg import gaussian_smoothing
+    from ..Functional.NiftyReg import resample_image_rigid
+    from ..Functional.NiftyReg import deriv_intensity_wrt_space_rigid
+    from ..Functional.NiftyReg import deriv_intensity_wrt_transformation_rigid
+    from ..Functional.NiftyReg import deriv_ssd_wrt_transformation_rigid
+    from ..Functional.NiftyReg import gaussian_smoothing
 except:
     has_NiftyPy = False
     print("Please install NiftyPy")

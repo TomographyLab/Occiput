@@ -7,14 +7,15 @@
 # Import an interfile volume as an Image3D and export.
 
 
-from occiput.Core import (
+from ...Core import (
     Image3D,
     Transform_Identity,
     Transform_6DOF,
     Transform_Affine,
     Transform_Scale,
+    Interfile
 )
-from interfile import Interfile
+
 import h5py
 import os
 from numpy import (

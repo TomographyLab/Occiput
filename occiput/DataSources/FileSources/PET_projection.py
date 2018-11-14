@@ -13,12 +13,12 @@ __all__ = [
 ]
 
 
-from occiput.Reconstruction.PET.PET_projection import (
+from ...Reconstruction.PET.PET_projection import (
     PET_Projection,
     Binning,
     PET_Projection_Sparsity,
 )
-from interfile import Interfile
+from ...Core import Interfile
 import h5py
 import os
 from numpy import (

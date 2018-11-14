@@ -9,7 +9,7 @@ from PIL import Image
 from occiput.Core import Image3D, Transform_Affine
 import numpy
 import nibabel
-import dicom
+import pydicom
 import matplotlib.pyplot as plt
 import os
 import copy

@@ -4,86 +4,46 @@
 # Aalto University, Department of Computer Science
 
 
-__all__ = ["KSpace", "MR_Static_Scan", "MR_Dynamic_Scan"]
+__all__ = ['KSpace', 'MR_Static_Scan', 'MR_Dynamic_Scan','import_kspace', 'load_motion_sensor_data', 'load_vnav_mprage']
 
 # Import occiput:
-from occiput.Core import Image3D
-from occiput.Core import Transform_Identity
-from occiput.Visualization import (
-    ProgressBar,
-    svgwrite,
-    has_svgwrite,
-    ipy_table,
-    has_ipy_table,
-)
-from occiput.Visualization.Colors import *
-from occiput.DataSources.Synthetic.Shapes import uniform_cylinder
-from occiput.Visualization import ipy_table, has_ipy_table, svgwrite, has_svgwrite
-from occiput.Core.NiftyPy_wrap import (
-    has_NiftyPy,
-    INTERPOLATION_POINT,
-    INTERPOLATION_LINEAR,
-)
-from occiput.DataSources.FileSources.vNAV import load_vnav_mprage
+from ...Core import Image3D
+from ...Visualization.Colors import *
+from ...DataSources.Synthetic.Shapes import uniform_cylinder
+from ...Visualization.Visualization import ipy_table, has_ipy_table, svgwrite, has_svgwrite
+from ...Functional.NiftyRec import has_NiftyPy, INTERPOLATION_POINT, \
+    INTERPOLATION_LINEAR
+from ...DataSources.FileSources.vNAV import load_vnav_mprage
+from ...DataSources.FileSources.MR_motion_sensors import load_motion_sensor_data
+from ...DataSources.FileSources.MR_kspace import import_kspace
 
-# from occiput.DataSources.FileSources.MR_motion_sensors import load_motion_sensor_data
-from occiput.DataSources.FileSources import import_nifti
 
 # Import DisplayNode for IPython integration
-from DisplayNode import DisplayNode
+#import DisplayNode
 
 # Import other modules
 from PIL import ImageDraw
 from PIL import Image as PIL
-from numpy import (
-    isscalar,
-    linspace,
-    int32,
-    uint32,
-    ones,
-    zeros,
-    pi,
-    float32,
-    where,
-    ndarray,
-    nan,
-    inf,
-    exp,
-    asarray,
-    complex64,
-    complex128,
-    complex,
-    abs,
-    angle,
-    real,
-    imag,
-)
-from numpy.fft import fftn, ifftn, fft2, ifft2, fftshift, ifftshift
-from numpy.random import randint
-from numpy.random import randint
-from numpy import asfortranarray, asfortranarray
-from scipy import optimize
-import scipy
-import scipy.signal
-import scipy.io
-import scipy.ndimage
-import os
-import h5py
+import numpy as np
+
+#from numpy import isscalar, linspace, int32, uint32, ones, zeros, pi,
+# float32, where, ndarray, nan, inf, exp, asarray, \
+#    complex64, complex128, complex, abs, angle, real, imag
+#from numpy.fft import fftn, ifftn, ifft2, fftshift
+import scipy as sp
+#import scipy.signal
+#import scipy.io
+#import scipy.ndimage
+
 
 # Import ilang (inference language; optimisation)
-from .MR_ilang import (
-    MR_Static_Gaussian,
-    MR_Dynamic_Gaussian,
-    ProbabilisticGraphicalModel,
-)
-from ilang.Samplers import Sampler
+from .MR_ilang import MR_Static_Gaussian, MR_Dynamic_Gaussian, ProbabilisticGraphicalModel
 
 # Set verbose level
-from occiput.global_settings import *
+from ...global_settings import *
 
 set_verbose_no_printing()
 # set_verbose_high()
-
 
 INTERPOLATION_COMPLEXPLANE = 0
 INTERPOLATION_POLAR = 1
@@ -107,11 +67,11 @@ class KSpace:
 
     def load_from_file(self, filename, motion_data_file=None):
         self.filename = filename
-        mat = scipy.io.loadmat(filename)
+        mat = sp.io.loadmat(filename)
         self.data = mat["data"]
         # fftshift
         for i in range(self.data.shape[0]):
-            self.data[i, :, :, :] = fftshift(self.data[i, :, :, :])
+            self.data[i, :, :, :] = np.fft.fftshift(self.data[i, :, :, :])
         # self.data = self.data.squeeze()
         if motion_data_file is not None:
             self.load_motion_from_file(motion_data_file)
@@ -120,12 +80,12 @@ class KSpace:
         motion = load_motion_sensor_data(filename)
         self.motion = motion  # FIXME: define motion information
         motion_events = self.motion.extract_motion_events()
-        motion_events_indexes = where(motion_events != 0)[0].tolist()
+        motion_events_indexes = np.where(motion_events != 0)[0].tolist()
         self.motion_events_indexes = motion_events_indexes
 
     def get_static_data(self):
-        data = complex64(
-            zeros((self.data.shape[1], self.data.shape[2], self.data.shape[3]))
+        data = np.complex64(
+            np.zeros((self.data.shape[1], self.data.shape[2], self.data.shape[3]))
         )
         for i in range(self.data.shape[0]):
             data = data + self.data[i, :, :, :]
@@ -146,39 +106,39 @@ class MR_Static_Scan:
     ):
         kspace = self.kspace.get_static_data()
         shape = kspace.shape
-        image = asarray(complex64(zeros(shape)), order="F")
+        image = np.asarray(np.complex64(np.zeros(shape)), order="F")
         for iter in range(iterations):
             diff = kspace - self.project(image)
             grad = -self.backproject(diff)
             image_abs = abs(image)
-            kernel = -ones((3, 3, 3))
+            kernel = -np.ones((3, 3, 3))
             kernel[1, 1, 1] = 26
             # 1) smooth magnitude
             eps = 1e-8
             norm = (
                 2
-                * (scipy.ndimage.filters.convolve(image_abs, kernel) + eps)
+                * (sp.ndimage.filters.convolve(image_abs, kernel) + eps)
                 / (image_abs + eps)
             )
             # !!!
             # 2) smooth square magnitude
-            # norm = 4*(scipy.ndimage.filters.convolve(image_abs,kernel))
-            g0_real = -real(image) * norm
-            g0_imag = -imag(image) * norm
-            g0 = complex64(g0_real + g0_imag * 1j)
+            # norm = 4*(sp.ndimage.filters.convolve(image_abs,kernel))
+            g0_real = -np.real(image) * norm
+            g0_imag = -np.imag(image) * norm
+            g0 = np.complex64(g0_real + g0_imag * 1j)
             image = image - dt * (grad - beta * g0)
         return Image3D(abs(image))
 
     def reconstruct_ifft(self):
         kspace = self.kspace.get_static_data()
-        image = asarray(fftshift(ifftn(kspace)), order="F")
+        image = np.asarray(np.fft.fftshift(np.fft.ifftn(kspace)), order="F")
         return Image3D(abs(image))
 
     def project(self, volume):
-        return asarray(fftn(fftshift(volume)), order="F")
+        return np.asarray(np.fft.fftn(np.fft.fftshift(volume)), order="F")
 
     def backproject(self, kspace):
-        return asarray(fftshift(ifftn(kspace)), order="F")
+        return np.asarray(np.fft.fftshift(np.fft.ifftn(kspace)), order="F")
 
     def _construct_ilang_model(self):
         # define the ilang probabilistic model
@@ -227,10 +187,10 @@ class MR_Dynamic_Scan:
         interpolation_mode=INTERPOLATION_POINT,
     ):
         shape = self.kspace.get_static_data().shape
-        image = asarray(complex128(zeros(shape)), order="F")
+        image = np.asarray(np.complex128(np.zeros(shape)), order="F")
         n_frames = len(self.time_bins)
         for iter in range(iterations):
-            grad = asarray(complex128(zeros(shape)), order="F")
+            grad = np.asarray(np.complex128(np.zeros(shape)), order="F")
             for framei in range(n_frames):
                 use_frame = True
                 if active_frames is not None:
@@ -250,7 +210,7 @@ class MR_Dynamic_Scan:
                             interpolation_space=interpolation_space,
                             interpolation_mode=interpolation_mode,
                         )
-                    kspace = asarray(self.kspace.data[framei, :, :, :], order="F")
+                    kspace = np.asarray(self.kspace.data[framei, :, :, :], order="F")
                     diff = kspace - self.project(image_tr)
                     grad_tr = -self.backproject(diff)
                     if framei == 0:
@@ -263,19 +223,19 @@ class MR_Dynamic_Scan:
                             interpolation_mode=interpolation_mode,
                         )
             image_abs = abs(image)
-            kernel = -ones((3, 3, 3))
+            kernel = -np.ones((3, 3, 3))
             kernel[1, 1, 1] = 26
             # 1) smooth magnitude
             eps = 1e-8
             norm = (
                 2
-                * (scipy.ndimage.filters.convolve(image_abs, kernel) + eps)
+                * (sp.ndimage.filters.convolve(image_abs, kernel) + eps)
                 / (image_abs + eps)
             )
             # 2) smooth square magnitude
-            # norm = 4*(scipy.ndimage.filters.convolve(image_abs,kernel))
-            g0_real = real(image) * norm
-            g0_imag = imag(image) * norm
+            # norm = 4*(sp.ndimage.filters.convolve(image_abs,kernel))
+            g0_real = np.real(image) * norm
+            g0_imag = np.imag(image) * norm
             g0 = g0_real + g0_imag * 1j
             image = image - dt * (grad + beta * g0)
         return Image3D(abs(image))
@@ -290,13 +250,13 @@ class MR_Dynamic_Scan:
         interpolation_space=INTERPOLATION_COMPLEXPLANE,
         interpolation_mode=INTERPOLATION_POINT,
     ):
-        I = Image3D(zeros(image.shape))
+        I = Image3D(np.zeros(image.shape))
         I.set_space("world")
         grid = I.get_world_grid()
         I.transform(affine)
         if interpolation_space == INTERPOLATION_COMPLEXPLANE:
-            re = asarray(real(image), order="F")
-            im = asarray(imag(image), order="F")
+            re = np.asarray(np.real(image), order="F")
+            im = np.asarray(np.imag(image), order="F")
             I.data = re
             re = I.compute_resample_on_grid(
                 grid, interpolation_mode=interpolation_mode
@@ -305,10 +265,10 @@ class MR_Dynamic_Scan:
             im = I.compute_resample_on_grid(
                 grid, interpolation_mode=interpolation_mode
             ).data
-            image_tr = complex128(re + im * 1j)
+            image_tr = np.complex128(re + im * 1j)
         elif interpolation_space == INTERPOLATION_POLAR:
-            r = asarray(abs(image), order="F")
-            t = asarray(angle(image), order="F")
+            r = np.asarray(np.abs(image), order="F")
+            t = np.asarray(np.angle(image), order="F")
             I.data = r
             r = I.compute_resample_on_grid(
                 grid, interpolation_mode=interpolation_mode
@@ -317,19 +277,19 @@ class MR_Dynamic_Scan:
             t = I.compute_resample_on_grid(
                 grid, interpolation_mode=interpolation_mode
             ).data
-            image_tr = r * exp(t * 1j)
+            image_tr = r * np.exp(t * 1j)
         return image_tr
 
     def reconstruct_ifft(self):
         kspace = self.kspace.get_static_data()
-        image = asarray(fftshift(ifftn(kspace)), order="F")
+        image = np.asarray(np.fft.fftshift(np.fft.ifftn(kspace)), order="F")
         return Image3D(abs(image))
 
     def project(self, volume):
-        return asarray(fftn(fftshift(volume)), order="F")
+        return np.asarray(np.fft.fftn(np.fft.fftshift(volume)), order="F")
 
     def backproject(self, kspace):
-        return asarray(fftshift(ifftn(kspace)), order="F")
+        return np.asarray(np.fft.fftshift(np.fft.ifftn(kspace)), order="F")
 
     def _construct_ilang_model(self):
         # define the ilang probabilistic model

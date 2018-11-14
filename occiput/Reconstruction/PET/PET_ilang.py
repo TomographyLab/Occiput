@@ -7,8 +7,8 @@
 # Abstraction of a PET scanner: probabilistic graphical model
 
 
-import ilang
-import ilang.Models
+#import ilang
+#import ilang.Models
 from ilang.Models import Model
 from ilang.Graphs import ProbabilisticGraphicalModel
 

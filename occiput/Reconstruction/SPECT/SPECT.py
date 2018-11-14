@@ -4,30 +4,30 @@
 # Aalto University, Department of Computer Science
 
 
-from occiput.Reconstruction.SPECT import Scintillators
-from occiput.Reconstruction.SPECT import Collimators
-from occiput.DataSources.FileSources import import_nifti
+from . import Scintillators
+from . import Collimators
+from ...DataSources.FileSources.Volume import import_nifti
 
 # Import NiftyPy ray-tracers
-from occiput.Core.NiftyPy_wrap import (
+from ...Functional.NiftyRec import (
     SPECT_project_parallelholes,
     SPECT_backproject_parallelholes,
     has_NiftyPy,
 )
-from occiput.Core import Image3D
-from occiput.Core.Errors import FileNotFound, UnknownParameter, UnexpectedParameter
+from ...Core import Image3D
+from ...Core.Errors import FileNotFound, UnknownParameter, UnexpectedParameter
 
-from occiput.Visualization import (
+from ...Visualization import (
     ProgressBar,
     svgwrite,
     has_svgwrite,
     ipy_table,
     has_ipy_table,
 )
-from occiput.Visualization.Colors import *
+from ...Visualization.Colors import *
 
 # Import DisplayNode for IPython integration
-from DisplayNode import DisplayNode
+#from DisplayNode import DisplayNode
 
 # Import various other libraries
 from numpy import *
@@ -36,6 +36,7 @@ from numpy import asfortranarray, asfortranarray
 from scipy import optimize
 import scipy
 import scipy.signal
+import h5py
 
 
 # Default parameters
@@ -52,7 +53,7 @@ class SPECT_Projection:
 
     def get_data(self):
         """Returns the raw projection data (note that is can be accessed also as self.data ). """
-        return data
+        return self.data
 
     def save_to_file(self, filename):
         h5f = h5py.File(filename, "w")
@@ -762,5 +763,5 @@ class Gantry:
 
 class GE_Infinia(SPECT_Static_Scan):
     def __init__(self):
-        SPECT.__init__(self)
+        SPECT_Static_Scan.__init__(self)
         self._name = "GE Infinia SPECT Scanner with LEHR collimator"

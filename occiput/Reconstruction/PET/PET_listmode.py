@@ -10,11 +10,12 @@
 # The simple plugin system handles the compilation of the code.
 
 
-from occiput.Reconstruction.PET.PET_Projection import (
+from .PET_projection import (
     PET_Projection,
     PET_Projection_Sparsity,
 )
-from occiput.Core.NiftyPy_wrap import (
+
+from ...Functional.NiftyRec import (
     PET_listmode_get_measurement_static,
     PET_listmode_get_measurement,
 )

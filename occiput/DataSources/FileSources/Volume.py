@@ -9,7 +9,7 @@ from occiput.Core.Conversion import nipy_to_occiput, occiput_from_array, nifti_t
 from occiput.DataSources.FileSources.LookupTable import load_freesurfer_lut_file
 import os
 import numpy
-import dicom
+import pydicom
 
 
 import warnings

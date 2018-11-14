@@ -22,7 +22,7 @@ from .Core import grid_from_box_and_affine
 from .Core import nipy_to_occiput, nifti_to_occiput, occiput_from_array
 
 from . import transformations
-from . import NiftyPy_wrap
+#from . import NiftyPy_wrap
 from . import Conversion
 from . import Errors
 from . import Print

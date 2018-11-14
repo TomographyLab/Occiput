@@ -16,36 +16,38 @@ __all__ = [
     "PET_project_compressed",
     "PET_backproject_compressed",
     "has_NiftyPy",
-]
+    ]
 
-from occiput.Core.NiftyPy_wrap import (
+from ...Functional.NiftyRec import (
     PET_project_compressed,
     PET_backproject_compressed,
     has_NiftyPy,
-)
-
+    )
+from ...Core.Errors import *
 
 DEFAULT_PROJECTION_PARAMETERS = {
-    "N_samples": 256,
-    "sample_step": 0.8,
-    "background_activity": 0.0,
-    "background_attenuation": 0.0,
-    "truncate_negative_values": 0,
-    "gpu_acceleration": 1,
-    "direction": 7,  # affects performance only, between 1 and 6; 2 and 5 are normally the best value
-    "block_size": 512,
-}  # affects performance only
+    "N_samples":256,
+    "sample_step":0.8,
+    "background_activity":0.0,
+    "background_attenuation":0.0,
+    "truncate_negative_values":0,
+    "gpu_acceleration":1,
+    "direction":7,
+# affects performance only, between 1 and 6; 2 and 5 are normally the best value
+    "block_size":512,
+    }  # affects performance only
 
 DEFAULT_BACKPROJECTION_PARAMETERS = {
-    "N_samples": 256,
-    "sample_step": 0.8,
-    "background_activity": 0.0,
-    "background_attenuation": 0.0,
-    "truncate_negative_values": 0,
-    "gpu_acceleration": 1,
-    "direction": 7,  # affects performance only, between 1 and 6; 2 and 5 are normally the best value
-    "block_size": 512,
-}  # affects performance only
+    "N_samples":256,
+    "sample_step":0.8,
+    "background_activity":0.0,
+    "background_attenuation":0.0,
+    "truncate_negative_values":0,
+    "gpu_acceleration":1,
+    "direction":7,
+# affects performance only, between 1 and 6; 2 and 5 are normally the best value
+    "block_size":512,
+    }  # affects performance only
 
 
 class ProjectionParameters:
@@ -53,14 +55,14 @@ class ProjectionParameters:
 
     default_parameters = DEFAULT_PROJECTION_PARAMETERS
 
-    def __init__(self, parameters=None):
+    def __init__(self,parameters = None):
         self._initialised = 0
         self.name = "Unknown binning name"
         if parameters is None:
             self.load_from_dictionary(self.default_parameters)
         elif type(parameters) == dict:
             self.load_from_dictionary(parameters)
-        elif type(parameters) in [list, tuple]:
+        elif type(parameters) in [list,tuple]:
             if len(parameters) == len(list(self.default_parameters.keys())):
                 self.N_samples = parameters[0]
                 self.sample_step = parameters[1]
@@ -72,16 +74,16 @@ class ProjectionParameters:
                 self.block_size = parameters[7]
             else:
                 raise UnknownParameter(
-                    "Parameter %s specified for ProjectionParameters is not compatible. "
-                    % str(parameters)
-                )
+                        "Parameter %s specified for ProjectionParameters is not compatible. "
+                        % str(parameters)
+                        )
         else:
             raise UnknownParameter(
-                "Parameter %s specified for ProjectionParameters is not compatible. "
-                % str(parameters)
-            )
+                    "Parameter %s specified for ProjectionParameters is not compatible. "
+                    % str(parameters)
+                    )
 
-    def load_from_dictionary(self, dictionary):
+    def load_from_dictionary(self,dictionary):
         self.N_samples = dictionary[
             "N_samples"
         ]  # Number of samples along a line when computing line integrals
