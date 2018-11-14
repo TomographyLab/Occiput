@@ -5,3 +5,5 @@ dist
 occiput.egg-info
 occiput/notebooks/.ipynb_checkpoints
 __pycache__
+.idea
+.git
