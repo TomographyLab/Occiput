@@ -4,3 +4,5 @@ build
 dist
 occiput.egg-info
 occiput/notebooks/.ipynb_checkpoints
+occiput/__pycache__
+occiput/Core/__pycache__
