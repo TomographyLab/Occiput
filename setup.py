@@ -7,9 +7,9 @@
 # Use old Python build system, otherwise the extension libraries cannot be found. FIXME
 import sys
 
-for arg in sys.argv:
-    if arg == "install":
-        sys.argv.append("--old-and-unmanageable")
+# for arg in sys.argv:
+#     if arg == "install":
+#         sys.argv.append("--old-and-unmanageable")
 
 from setuptools import setup, Extension
 from glob import glob
