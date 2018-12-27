@@ -3,9 +3,9 @@
 # Harvard University, Martinos Center for Biomedical Imaging
 # Aalto University, Department of Computer Science
 
-import numpy
+import numpy as np
 from occiput.Core import Image3D, Grid3D, Transform_6DOF
-from ilang.Models import Model
+from ...Functional.ilang.Models import Model
 
 
 class SSD_ilang(Model):
@@ -37,7 +37,7 @@ class SSD_ilang(Model):
         source = self.get_value("source")
         target = self.get_value("target")
         sigma = self.get_value("sigma")
-        gradient = numpy.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        gradient = np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         return gradient
 
     def sample_conditional_probability_target(self):

@@ -3,10 +3,10 @@
 # Harvard University, Martinos Center for Biomedical Imaging
 # Aalto University, Department of Computer Science
 
-import numpy
+import numpy as np
 from .ilang_models import SSD_ilang
-from ilang.Graphs import ProbabilisticGraphicalModel
-from ilang.Samplers import Sampler
+from ...Functional.ilang.Graphs import ProbabilisticGraphicalModel
+from ...Functional.ilang.Samplers import Sampler
 from occiput.Visualization import MultipleVolumesNiftyPy
 from occiput.Core import Image3D, Transform_Translation
 
@@ -30,7 +30,7 @@ class Registration_Two_Images(object):
         self.set_sigma(sigma)
         self.__make_graph()
         if initial_transformation == None:
-            self.set_transformation(numpy.zeros(degrees_of_freedom))
+            self.set_transformation(np.zeros(degrees_of_freedom))
         else:
             self.set_transformation(initial_transformation)
 
@@ -60,8 +60,8 @@ class Registration_Two_Images(object):
         # make sure that the images are in the same space
         if self.source.space != self.target.space:
             raise "Source [%s] and Target [%s] must be in the same space" % (
-                source.space,
-                target.space,
+                self.source.space,
+                self.target.space,
             )
         self.space = self.source.space
 
@@ -149,7 +149,7 @@ class Registration_Two_Images(object):
         G_tra1 = (re_t.data - re_t.data * gr_s[1]).sum()
         G_tra2 = (re_t.data - re_t.data * gr_s[2]).sum()
         G_tra = [G_tra0, G_tra1, G_tra2]
-        G = numpy.asarray([G_tra[0], G_tra[1], G_tra[2]]) / self.sigma
+        G = np.asarray([G_tra[0], G_tra[1], G_tra[2]]) / self.sigma
         #        print "gradient:       ", G
         #        print "log_likelihood: ", self.__P(transformation)
         return G
@@ -167,7 +167,7 @@ class Registration_Two_Images(object):
             self.grid, affine_grid_to_world=T
         )
         P = (
-            -numpy.linalg.norm(resampled_source.data - self.resampled_target.data)
+            -np.linalg.norm(resampled_source.data - self.resampled_target.data)
             / self.sigma
         )  # FIXME: verify
         #        print "log_likelihood: ", P

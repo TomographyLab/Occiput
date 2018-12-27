@@ -9,8 +9,9 @@
 
 #import ilang
 #import ilang.Models
-from ilang.Models import Model
-from ilang.Graphs import ProbabilisticGraphicalModel
+from ...Functional.ilang.Models import Model
+from ...Functional.ilang.Graphs import ProbabilisticGraphicalModel
+import numpy as np
 
 __all__ = ["PET_Static_Poisson", "PET_Dynamic_Poisson", "ProbabilisticGraphicalModel"]
 
@@ -115,13 +116,13 @@ class PET_Dynamic_Poisson(Model):
         return 0
 
     def log_conditional_probability_gradient_lambda(self):
-        return numpy.zeros([100, 1])
+        return np.zeros([100, 1])
 
     def log_conditional_probability_alpha(self):
         return 0
 
     def log_conditional_probability_gradient_alpha(self):
-        return numpy.zeros([100, 1])
+        return np.zeros([100, 1])
 
     def sample_conditional_probability_counts(self):
         return 0

@@ -10,8 +10,8 @@ from __future__ import absolute_import, print_function
 __all__ = ['Node', 'Dependence', 'ProbabilisticGraphicalModel']
 
 from .verbose import *
-import numpy
-from ..DisplayNode import DisplayNode
+import numpy as np
+from ...Visualization.DisplayNode import DisplayNode
 from .exceptions import *
 
 data_types = ['continuous', 'discrete']
@@ -600,23 +600,23 @@ class Node():
         return self.given
 
     def set_value(self, value):
-        """Sets the value associated to the node. The value must be an instance of numpy.ndarray"""
-        if not (isinstance(value, numpy.ndarray) or numpy.isscalar(value)):
+        """Sets the value associated to the node. The value must be an instance of np.ndarray"""
+        if not (isinstance(value, np.ndarray) or np.isscalar(value)):
             try:
-                value = numpy.asarray(value)
+                value = np.asarray(value)
             except:
-                raise UnexpectedParameterType("'value' is expected to be an instance of numpy.ndarray")
+                raise UnexpectedParameterType("'value' is expected to be an instance of np.ndarray")
         self.value = value
         #        # set value, but maintain the object in the same memory location, so that all memory references remain valid
         #        print "@@ Setting value: ",self.name, value
         #        if self.value is None:
-        #            if numpy.isscalar(value):
-        #                self.value = numpy.asarray(value)
+        #            if np.isscalar(value):
+        #                self.value = np.asarray(value)
         #            else:
         #                self.value = value
         #        else:
-        #            if numpy.isscalar(value):
-        #                self.value.data = numpy.asarray(value).data
+        #            if np.isscalar(value):
+        #                self.value.data = np.asarray(value).data
         #            else:
         #                self.value[:] = value
         return True
@@ -646,11 +646,11 @@ class Node():
 
     def zeros(self):
         """Return an array of zeros of the same size and shape as the value of the node. """
-        return numpy.zeros(self.value.shape)
+        return np.zeros(self.value.shape)
 
     def zeros_hessian(self):
         """Return a square matrix of zeros, with number of rows equal to the length of the value of the node. """
-        return numpy.zeros((self.value.size, self.value.size))
+        return np.zeros((self.value.size, self.value.size))
 
     def has_log_conditional_probability_gradient(self):
         """Returns True if a method to compute the gradient of the log of the conditional 

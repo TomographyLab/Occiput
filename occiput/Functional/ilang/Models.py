@@ -13,8 +13,8 @@ from .Graphs import Dependence
 from .exceptions import *
 from .verbose import *
 
-from ..DisplayNode import DisplayNode
-import numpy
+from ...Visualization.DisplayNode import DisplayNode
+import numpy as np
 
 
 class Model(Dependence, object):
@@ -36,12 +36,12 @@ class MultivariateGaussian(Model):
     def log_conditional_probability_x(self, x):
         hessian = self._compute_hessian()
         mu = self.get_value('mu')
-        return -.5 * numpy.dot(numpy.dot((x - mu), hessian), (x - mu).T)
+        return -.5 * np.dot(np.dot((x - mu), hessian), (x - mu).T)
 
     def log_conditional_probability_gradient_x(self, x):
         hessian = self._compute_hessian()
         mu = self.get_value('mu')
-        return -.5 * numpy.dot((x - mu), hessian + hessian.T)
+        return -.5 * np.dot((x - mu), hessian + hessian.T)
 
     def log_conditional_probability_hessian_x(self, x):
         hessian = self._compute_hessian()
@@ -58,13 +58,13 @@ class MultivariateGaussian(Model):
     def sample_conditional_probability_x(self):
         mu = self.get_value('mu')
         cov = self.get_value('cov')
-        return numpy.random.multivariate_normal(mu.reshape(mu.size), cov)
+        return np.random.multivariate_normal(mu.reshape(mu.size), cov)
 
         # miscellaneous:
 
     def _compute_hessian(self):
         cov = self.get_value('cov')
-        self._hessian = numpy.linalg.inv(cov)
+        self._hessian = np.linalg.inv(cov)
         return self._hessian
 
 
@@ -133,7 +133,7 @@ class SSD_Transformation(Model):
         source = self.get_value('source')
         target = self.get_value('target')
         sigma = self.get_value('sigma')
-        gradient = numpy.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        gradient = np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         return gradient
 
     def sample_conditional_probability_target(self):
