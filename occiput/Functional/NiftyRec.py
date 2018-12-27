@@ -7,7 +7,8 @@
 # Martinos Center for Biomedical Imaging, Harvard University/MGH
 # Jan. 2014, Boston
 
-from simplewrap import *
+from .SimpleWrap import localpath, filepath, call_c_function, find_c_library, NOT_FOUND, FOUND, FOUND_NOT_LOADABLE, \
+    load_c_library
 import numpy as np
 import os,platform
 
@@ -1022,7 +1023,7 @@ def SPECT_project_parallelholes(activity,cameras,attenuation = None,psf = None,
                   {'name':'attenuation','type':'array','value':attenuation},
                   {
                       'name':'attenuation_size','type':'array',
-                      'value':int32(attenuation.shape)
+                      'value':np.int32(attenuation.shape)
                   },
                   {'name':'background','type':'float','value':background},
                   {
@@ -1278,7 +1279,7 @@ def TR_transform_grid(grid_array,affine_from_grid,use_gpu = 1):
                       'name':'affine','type':'array','value':affine_from_grid,
                       'dtype':np.float32
                   },
-                  {'name':'use_gpu','type':'uint','value':uint32(use_gpu)},]
+                  {'name':'use_gpu','type':'uint','value':np.uint32(use_gpu)},]
     r = call_c_function(niftyrec_c.TR_transform_grid,descriptor)
     if not r.status == status_success():
         raise ErrorInCFunction(

@@ -7,7 +7,7 @@
 # Martinos Center for Biomedical Imaging, Harvard University/MGH
 # Jan. 2014, Boston
 
-from simplewrap import localpath, filepath, call_c_function, find_c_library, NOT_FOUND, FOUND, FOUND_NOT_LOADABLE, \
+from .SimpleWrap import localpath, filepath, call_c_function, find_c_library, NOT_FOUND, FOUND, FOUND_NOT_LOADABLE, \
     load_c_library
 import numpy as np
 #from numpy import int32, float32, zeros, uint16, eye, uint32, asarray

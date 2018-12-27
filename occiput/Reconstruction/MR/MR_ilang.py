@@ -4,10 +4,11 @@
 # Aalto University, Department of Computer Science
 
 
-import ilang
-import ilang.Models
-from ilang.Models import Model
-from ilang.Graphs import ProbabilisticGraphicalModel
+#import ilang
+#import ilang.Models
+from ...Functional.ilang.Models import Model
+from ...Functional.ilang.Graphs import ProbabilisticGraphicalModel
+import numpy as np
 
 __all__ = ["MR_Static_Gaussian", "MR_Dynamic_Gaussian", "ProbabilisticGraphicalModel"]
 
@@ -105,13 +106,13 @@ class MR_Dynamic_Gaussian(Model):
         return 0
 
     def log_conditional_probability_gradient_lambda(self):
-        return numpy.zeros([100, 1])
+        return np.zeros([100, 1])
 
     def log_conditional_probability_alpha(self):
         return 0
 
     def log_conditional_probability_gradient_alpha(self):
-        return numpy.zeros([100, 1])
+        return np.zeros([100, 1])
 
     def sample_conditional_probability_z(self):
         return 0

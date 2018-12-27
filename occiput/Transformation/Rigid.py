@@ -5,9 +5,9 @@
 
 __all__ = ["RigidTransformationSSD"]
 
-from ilang.Models import Model
-from ilang.Graphs import ProbabilisticGraphicalModel
-from ilang.Samplers import Sampler
+from ..Functional.ilang.Models import Model
+from ..Functional.ilang.Graphs import ProbabilisticGraphicalModel
+from ..Functional.ilang.Samplers import Sampler
 
 from occiput.Core import Image3D
 from occiput.Visualization import MultipleVolumes
@@ -48,7 +48,7 @@ class ModelRigidSSD(Model):
         source = self.get_value("source")
         target = self.get_value("target")
         # return -.5*numpy.dot(numpy.dot((x-mu),hessian),(x-mu).T)
-        FIXME
+        # FIXME
         return 0
 
     def log_conditional_probability_gradient_transformation(self, T):
