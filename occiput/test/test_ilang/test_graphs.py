@@ -3,8 +3,6 @@
 # Aalto University, School of Science, Helsinki
 # Oct 2013, Helsinki 
 
-from __future__ import absolute_import, print_function
-
 import unittest
 from .. import Graphs
 from .. import exceptions

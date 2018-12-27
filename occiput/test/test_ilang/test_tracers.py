@@ -4,8 +4,6 @@
 # Aalto University, School of Science, Helsinki
 # Oct 2013, Helsinki 
 
-from __future__ import absolute_import
-
 import unittest
 from .. import Tracers
 from .. import exceptions

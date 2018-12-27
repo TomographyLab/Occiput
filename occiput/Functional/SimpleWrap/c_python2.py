@@ -6,15 +6,14 @@
 
 from __future__ import absolute_import, print_function
 
-__all__ = ['load_c_library', 'localpath', 'filepath', 'wrap_c_library', 'wrap_c_function', 'int32', 'uint32', 'uint16',
-           'load_c_library', 'float32']
+__all__ = ['load_c_library', 'localpath', 'filepath', 'wrap_c_library', 'wrap_c_function', 'load_c_library']
 
-from ctypes import *
-from numpy import *
+import ctypes
+import numpy as np
 import os, sys, inspect
-from .exceptions import *
-from json import loads
+from .exceptions import InstallationError, UnknownType, DescriptorError
 import platform
+from json import loads
 
 MAX_STR_LEN = 16384
 
@@ -45,7 +44,7 @@ def load_c_library(library_name, library_path):
             library_name, library_path))
     else:
         try:
-            L = CDLL(filename)
+            L = ctypes.CDLL(filename)
         except OSError:
             raise InstallationError(
                 "The library %s was found but could not be loaded. It is likely due to a linking error, missing libraries. " % library_name)
@@ -54,16 +53,16 @@ def load_c_library(library_name, library_path):
 
 
 def string_buffer():
-    s = create_string_buffer(MAX_STR_LEN)
+    s = ctypes.create_string_buffer(MAX_STR_LEN)
     return s
 
 
 def list_functions(c_library):
-    c_library.swrap_list_functions.restype = c_int
-    c_library.swrap_list_functions.argtypes = [c_char_p]
+    c_library.swrap_list_functions.restype = ctypes.c_int
+    c_library.swrap_list_functions.argtypes = [ctypes.c_char_p]
     list = string_buffer()
     if c_library.swrap_list_functions(list):
-        raise ("The library does not support simplewrap. ")
+        raise ("The library does not support SimpleWrap. ")
     list = loads(list.value.replace("'", '"'))
     return list
 
@@ -82,8 +81,8 @@ def descriptor_c_library(library_name, library_path):
     for f in functions:
         iface_name = 'swrap_' + str(f)
         iface = getattr(L, iface_name)
-        iface.restype = c_int
-        iface.argtypes = [c_char_p]
+        iface.restype = ctypes.c_int
+        iface.argtypes = [ctypes.c_char_p]
         fun_descriptor = string_buffer()
         iface(fun_descriptor)
         fun_descriptor = loads(fun_descriptor.value.replace("'", '"'))
@@ -91,16 +90,16 @@ def descriptor_c_library(library_name, library_path):
     return lib_descriptor
 
 
-class Matrix(Structure):
-    _fields_ = [("ndim", c_int),
-                ("dim", POINTER(c_int)),
-                ("data", c_void_p), ]
+class Matrix(ctypes.Structure):
+    _fields_ = [("ndim", ctypes.c_int),
+                ("dim", ctypes.POINTER(ctypes.c_int)),
+                ("data", ctypes.c_void_p), ]
 
 
 class TypeMap():
     def type_to_ctype(self, type):
         if type == 'matrix':
-            return POINTER(Matrix)
+            return ctypes.POINTER(Matrix)
 
     def arg_to_ctype(self, arg, type):
         # FIXME: check if ndarray, also possibly handle other matrix types here
@@ -138,7 +137,7 @@ def wrap_c_function(library, fun_descriptor):
 
             # define restype and argtypes 
             self._function = getattr(library, self._name)
-            self._function.restype = c_int
+            self._function.restype = ctypes.c_int
             self._function.argtypes = self._argtypes
 
         def list_names(self):

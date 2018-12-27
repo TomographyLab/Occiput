@@ -6,10 +6,10 @@
 from __future__ import absolute_import, print_function
 
 __all__ = ['call_c_function']
-from ctypes import *
-from numpy import *
-import os, sys, inspect
-from .exceptions import *
+
+import ctypes
+import numpy as np
+from .exceptions import UnknownType, DescriptorError
 from .c_python import load_c_library, localpath
 
 
@@ -17,7 +17,7 @@ def call_c_function(c_function, descriptor):
     """Call a C function in a dynamic library. The descriptor is a dictionary 
     that contains that parameters and describes how to use them. """
     # set the return type
-    c_function.restype = c_int
+    c_function.restype = ctypes.c_int
     # parse the descriptor, determine the types and instantiate variables if their value is not given 
     argtypes_c = []
     args_c = []
@@ -31,36 +31,36 @@ def call_c_function(c_function, descriptor):
             if arg is None:
                 if not d.has_key('size'):
                     raise DescriptorError("'string' with 'value'='None' must have 'size' property. ")
-                arg = ' ' * size
-            arg_c = c_char_p(arg)
+                arg = ' ' * d['size']
+            arg_c = ctypes.c_char_p(arg)
         elif argtype == 'int':
             if arg is None:
                 arg = 0
-            arg = c_int(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_int(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'uint':
             if arg is None:
                 arg = 0
-            arg = c_uint32(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_uint32(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'long':
             if arg is None:
                 arg = 0
-            arg = c_longlong(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_longlong(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'float':
             if arg is None:
                 arg = 0.0
-            arg = c_float(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_float(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'array':
             if arg is None:
                 if not d.has_key('size'):
                     raise DescriptorError("'array' with 'value'='None' must have 'size' property. ")
                 if not d.has_key('dtype'):
                     raise DescriptorError("'array' with 'value'='None' must have 'dtype' property. ")
-                arg = zeros(d['size'], dtype=d['dtype'])
-            arg_c = arg.ctypes.data_as(POINTER(c_void_p))
+                arg = np.zeros(d['size'], dtype=d['dtype'])
+            arg_c = arg.ctypes.data_as(ctypes.POINTER(ctypes.c_void_p))
         else:
             raise UnknownType("Type %s is not supported. " % str(argtype))
         argtype_c = type(arg_c)

@@ -5,15 +5,14 @@
 # Harvard University, Martinos Center for Biomedical Imaging 
 # Dec. 2013, Boston 
 
-from __future__ import absolute_import, print_function
 
 __all__ = ['exists_c_library', 'find_c_library', 'load_c_library', 'call_c_function', 'export_dl_library_path',
-           'LibraryNotFound', 'FOUND', 'NOT_FOUND', 'FOUND_NOT_LOADABLE', 'localpath', 'filepath', 'int32', 'uint32',
-           'uint16', 'float32']
-from ctypes import *
-from numpy import *
+           'LibraryNotFound', 'FOUND', 'NOT_FOUND', 'FOUND_NOT_LOADABLE', 'localpath', 'filepath']
+
+import ctypes
+import numpy as np
 import os, sys, inspect
-from .exceptions import *
+from .exceptions import InstallationError, UnknownType, DescriptorError
 import platform
 import copy
 
@@ -54,7 +53,7 @@ def exists_c_library(lib_name, library_path):
 
 def isloadable_c_library(fullpath):
     try:
-        L = CDLL(fullpath)
+        L = ctypes.CDLL(fullpath)
     except:
         return False
     else:
@@ -75,7 +74,7 @@ def find_c_library(library_name, paths=('./')):
                 return FOUND, fullpath, path
             else:
                 return FOUND_NOT_LOADABLE, fullpath, path
-    return NOT_FOUND, None, None
+    #return NOT_FOUND, None, None
 
 
 def load_c_library(fullpath):
@@ -85,7 +84,7 @@ def load_c_library(fullpath):
             "The library %s could not be found. Please specify the correct location of add location to the system path." % fullpath)
     else:
         try:
-            L = CDLL(fullpath)
+            L = ctypes.CDLL(fullpath)
         except OSError:
             raise InstallationError(
                 "The library %s was found but could not be loaded. It is likely due to a linking error, missing libraries. " % fullpath)
@@ -124,7 +123,7 @@ def call_c_function(c_function, descriptor):
     """Call a C function in a dynamic library. The descriptor is a dictionary 
     that contains that parameters and describes how to use them. """
     # set the return type
-    c_function.restype = c_int
+    c_function.restype = ctypes.c_int
     # parse the descriptor, determine the types and instantiate variables if their value is not given 
     argtypes_c = []
     args_c = []
@@ -138,28 +137,28 @@ def call_c_function(c_function, descriptor):
             if arg is None:
                 if not d.has_key('size'):
                     raise DescriptorError("'string' with 'value'='None' must have 'size' property. ")
-                arg = ' ' * size
-            arg_c = c_char_p(arg)
+                arg = ' ' * d['size']
+            arg_c = ctypes.c_char_p(arg)
         elif argtype == 'int':
             if arg is None:
                 arg = 0
-            arg = c_int32(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_int32(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'uint':
             if arg is None:
                 arg = 0
-            arg = c_uint32(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_uint32(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'long':
             if arg is None:
                 arg = 0
-            arg = c_longlong(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_longlong(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'float':
             if arg is None:
                 arg = 0.0
-            arg = c_float(arg)
-            arg_c = pointer(arg)
+            arg = ctypes.c_float(arg)
+            arg_c = ctypes.pointer(arg)
         elif argtype == 'array':
             if arg is None:
                 if not d.has_key('size'):
@@ -173,7 +172,7 @@ def call_c_function(c_function, descriptor):
                             "'order' property of type 'array' must be 'C' (C array order),'F' (Fortran array order), 'A' (any order, let numpy decide) or None (any order, let numpy decide) ")
                 else:
                     order = None
-                arg = zeros(d['size'], dtype=d['dtype'], order=order)
+                arg = np.zeros(d['size'], dtype=d['dtype'], order=order)
                 # If variable is given (not None) and dtype is specified, change the dtype of the given array if not consistent
             # This also converts lists and tuples to numpy arrays if the given variable is not a numpy array. 
             else:
@@ -181,8 +180,8 @@ def call_c_function(c_function, descriptor):
                     dtype = d['dtype']
                     arg = dtype(arg)
                 if d.has_key('order'):
-                    arg = asarray(arg, order=d['order'])
-            arg_c = arg.ctypes.data_as(POINTER(c_void_p))
+                    arg = np.asarray(arg, order=d['order'])
+            arg_c = arg.ctypes.data_as(ctypes.POINTER(ctypes.c_void_p))
         elif argtype == 'function':
             if arg is None:
                 raise DescriptorError("For 'function' type, 'value' must be a function. ")
@@ -191,14 +190,14 @@ def call_c_function(c_function, descriptor):
             arg_types = []
             for t in d['arg_types']:
                 if t == 'int':
-                    arg_types.append(c_int32)
+                    arg_types.append(ctypes.c_int32)
                 if t == 'uint':
-                    arg_types.append(c_uint32)
+                    arg_types.append(ctypes.c_uint32)
                 if t == 'long':
-                    arg_types.append(c_longlong)
+                    arg_types.append(ctypes.c_longlong)
                 if t == 'float':
-                    arg_types.append(c_float)
-            funcCB = CFUNCTYPE(None, *arg_types)
+                    arg_types.append(ctypes.c_float)
+            funcCB = ctypes.CFUNCTYPE(None, *arg_types)
             arg_c = funcCB(arg)
         else:
             raise UnknownType("Type %s is not supported. " % str(argtype))
