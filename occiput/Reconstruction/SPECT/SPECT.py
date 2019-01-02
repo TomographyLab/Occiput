@@ -27,7 +27,7 @@ from ...Visualization import (
 from ...Visualization.Colors import *
 
 # Import DisplayNode for IPython integration
-#from DisplayNode import DisplayNode
+from ...Visualization.DisplayNode import DisplayNode
 
 # Import various other libraries
 from numpy import *
@@ -44,6 +44,7 @@ DEFAULT_ITERATIONS = 20
 DEFAULT_SUBSET_SIZE = 32
 EPS = 1e-9
 
+__all__ = ['SPECT_Projection','SPECT_Static_Scan','GE_Infinia']
 
 class SPECT_Projection:
     """SPECT projection object. """

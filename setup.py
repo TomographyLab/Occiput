@@ -33,12 +33,15 @@ class BuildExtWithoutPlatformSuffix(build_ext):
         filename = super().get_ext_filename(ext_name)
         return get_ext_filename_without_platform_suffix(filename)
 
-petlink32_c_module = Extension('occiput.DataSources.petlink.petlink32_c',
-                               [os.path.join('occiput', 'DataSources','petlink', 'petlink32_c.c')])
-test_simplewrap_module = Extension('occiput.test.tests_simplewrap.test_simplewrap_c',
-                                   [os.path.join('occiput', 'test','tests_simplewrap', 'test_simplewrap_c.c')])
-test_matrices_module = Extension('occiput.test.tests_simplewrap.test_matrices_c',
-                                 [os.path.join('occiput', 'test','tests_simplewrap', 'test_matrices_c.c')])
+petlink32_c_module = Extension('occiput.DataSources.PetLink.petlink32_c',
+                               [os.path.join('occiput', 'DataSources','PetLink', 'petlink32_c.c')])
+test_simplewrap_module = Extension('occiput.Tests.tests_simplewrap.test_simplewrap_c',
+                                   [os.path.join('occiput', 'Tests','tests_simplewrap', 'test_simplewrap_c.c')])
+test_matrices_module = Extension('occiput.Tests.tests_simplewrap.test_matrices_c',
+                                 [os.path.join('occiput', 'Tests','tests_simplewrap', 'test_matrices_c.c')])
+mMR_listmode_module = Extension('occiput.Plugins.Biograph_mMR.listmode_c', [os.path.join('occiput','Plugins','Biograph_mMR','listmode_c.c')])
+mMR_physiological_module = Extension('occiput.Plugins.Biograph_mMR.physiological_c',
+                          [os.path.join('occiput','Plugins','Biograph_mMR','physiological_c.c')])
 build_ext_fun = BuildExtWithoutPlatformSuffix
 
 
@@ -49,7 +52,7 @@ setup(
     author_email="occiput.reconstruction@gmail.com",
     packages=[
         "occiput",
-        "occiput.test",
+        "occiput.Tests",
         "occiput.notebooks",
         "occiput.Core",
         "occiput.Reconstruction",
@@ -66,6 +69,8 @@ setup(
         "occiput.DataSources.Synthetic",
         "occiput.DataSources.FileSources",
         "occiput.Visualization",
+        "occiput.Plugins",
+        "occiput.Plugins.Biograph_mMR",
     ],
     data_files=[
         (os.path.join('occiput','Visualization', 'DisplayNode', 'static'),
@@ -97,7 +102,7 @@ setup(
         ]
     },
     cmdclass={'build_ext': build_ext_fun},
-    ext_modules=[petlink32_c_module, test_simplewrap_module, test_matrices_module],
+    ext_modules=[petlink32_c_module, test_simplewrap_module, test_matrices_module, mMR_listmode_module, mMR_physiological_module],
     url="https://github.com/TomographyLab/Occiput/",
     license="LICENSE",
     description="Tomographic Vision - PET, SPECT, CT, MRI reconstruction and processing.",

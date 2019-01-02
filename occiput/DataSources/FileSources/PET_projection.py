@@ -21,32 +21,8 @@ from ...Reconstruction.PET.PET_projection import (
 from ...Core import Interfile
 import h5py
 import os
-from numpy import (
-    isscalar,
-    linspace,
-    int32,
-    uint32,
-    ones,
-    zeros,
-    pi,
-    sqrt,
-    float32,
-    float64,
-    where,
-    ndarray,
-    nan,
-)
-from numpy import (
-    inf,
-    asarray,
-    concatenate,
-    fromfile,
-    maximum,
-    exp,
-    asfortranarray,
-    fliplr,
-    transpose,
-)
+from numpy import asarray, concatenate, fromfile, asfortranarray, fliplr, ascontiguousarray
+from numpy import int32, zeros, float32
 
 
 def import_interfile_projection_data(

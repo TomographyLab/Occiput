@@ -7,7 +7,7 @@ import numpy as np
 from .ilang_models import SSD_ilang
 from ...Functional.ilang.Graphs import ProbabilisticGraphicalModel
 from ...Functional.ilang.Samplers import Sampler
-from occiput.Visualization import MultipleVolumesNiftyPy
+from occiput.Visualization.Visualization import MultipleVolumesNiftyPy
 from occiput.Core import Image3D, Transform_Translation
 
 

@@ -14,6 +14,7 @@
 
 import copy
 import os
+import time
 
 # Import interfile data handling module
 from ...Core import Interfile
@@ -28,6 +29,7 @@ from ...DataSources.FileSources.Files import guess_file_type_by_name
 from ...DataSources.FileSources.PET_projection import import_interfile_projection, export_interfile_projection, import_PET_Projection
 from ...DataSources.FileSources.PET_volume import import_interfile_volume, export_interfile_volume
 from ...DataSources.FileSources.PET_listmode import import_listmode, convert_listmode_dicom_to_interfile
+from ...DataSources.FileSources.vNAV import load_vnav_mprage
 from ...DataSources.Synthetic.Shapes import uniform_cylinder
 # Import ilang (inference language; optimisation)
 from .PET_ilang import PET_Static_Poisson, PET_Dynamic_Poisson, ProbabilisticGraphicalModel
@@ -69,13 +71,14 @@ __all__ = [
     'Binning',
     'PET_Projection_Sparsity',
     'PET_Projection',
-    'RigidTransform',
+    #'RigidTransform',
     'import_interfile_projection',
     'export_interfile_projection',
     'import_interfile_volume',
     'export_interfile_volume',
     'import_PET_Projection',
-    'import_listmode']
+    'import_listmode',
+    ]
 
 # set_verbose_high()
 # set_verbose_low()
@@ -170,7 +173,7 @@ class PET_Static_Scan:
 
     def __init__(self):
         self.use_gpu(True)  # by default, use GPU.
-        self.set_scanner(Generic)  # set scanner geometry and load interface
+        self.set_scanner('Generic')  # set scanner geometry and load interface
         self.activity = None  # memoization of activity.
         self.attenuation = None  # memoization of attenuation.
         self.attenuation_projection = None  # memoization of attenuation projection.
@@ -387,9 +390,14 @@ class PET_Static_Scan:
         return self.binning
 
     def set_scanner(self, scanner):
-        if type(scanner) is type(""):
+        try:
             scanner = get_scanner_by_name(scanner)
-        self.scanner = scanner()
+            self.scanner = scanner()
+        except BaseException:
+            try:
+                self.scanner = scanner()
+            except BaseException:
+                raise NotImplementedError
 
         self.activity_projection_parameters = ProjectionParameters()
         self.activity_backprojection_parameters = BackprojectionParameters()
@@ -969,7 +977,7 @@ class PET_Static_Scan:
             scale = 10.0
 
         if invert:
-            attenuation_data = 1.0 / (attenuation_data + eps)
+            attenuation_data = 1.0 / (attenuation_data + EPS)
         step_size_mm = self.attenuation_projection_parameters.sample_step
         step_size = step_size_mm / scale
 
@@ -2708,7 +2716,7 @@ class PET_Dynamic_Scan(PET_Static_Scan):
             randoms.append(frame.randoms)
         return randoms
 
-    def set_randoms(self, randoms):
+    def set_randoms(self, randoms_list):
         N_time_bins = len(randoms_list)
         if len(self) == N_time_bins:
             print(

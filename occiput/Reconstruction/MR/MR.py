@@ -8,7 +8,6 @@ __all__ = ['KSpace', 'MR_Static_Scan', 'MR_Dynamic_Scan','import_kspace', 'load_
 
 # Import occiput:
 from ...Core import Image3D
-from ...Visualization.Colors import *
 from ...DataSources.Synthetic.Shapes import uniform_cylinder
 from ...Visualization.Visualization import ipy_table, has_ipy_table, svgwrite, has_svgwrite
 from ...Functional.NiftyRec import has_NiftyPy, INTERPOLATION_POINT, \
@@ -25,15 +24,7 @@ from ...DataSources.FileSources.MR_kspace import import_kspace
 from PIL import ImageDraw
 from PIL import Image as PIL
 import numpy as np
-
-#from numpy import isscalar, linspace, int32, uint32, ones, zeros, pi,
-# float32, where, ndarray, nan, inf, exp, asarray, \
-#    complex64, complex128, complex, abs, angle, real, imag
-#from numpy.fft import fftn, ifftn, ifft2, fftshift
 import scipy as sp
-#import scipy.signal
-#import scipy.io
-#import scipy.ndimage
 
 
 # Import ilang (inference language; optimisation)

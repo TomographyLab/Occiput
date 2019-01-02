@@ -16,12 +16,10 @@ import copy
 import inspect
 import os
 
-#import DisplayNode
 import h5py
 from numpy import ascontiguousarray
 from numpy import isscalar, linspace, int32, uint16, zeros, pi, float32, tile
 from numpy.random import poisson
-from IPython.display import Image
 
 import occiput as __occiput
 from ...Core.Errors import *
@@ -32,8 +30,9 @@ from ...Functional.NiftyRec import  PET_compress_projection, \
                                     PET_get_subset_projection_array
 from ...Core.Print import rad_to_deg, array_to_string
 from ...Visualization import Colors as col
+from ...Visualization import DisplayNode
 from ...Visualization.Visualization import ipy_table, has_ipy_table, \
-    svgwrite, has_svgwrite, ProgressBar#, TriplanarView
+    svgwrite, has_svgwrite, ProgressBar, TriplanarView
 
 __all__ = ["DEFAULT_BINNING", "Binning", "PET_Projection_Sparsity", "PET_Projection",
            "PET_compress_projection", "PET_uncompress_projection",

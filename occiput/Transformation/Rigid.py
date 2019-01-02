@@ -10,7 +10,7 @@ from ..Functional.ilang.Graphs import ProbabilisticGraphicalModel
 from ..Functional.ilang.Samplers import Sampler
 
 from occiput.Core import Image3D
-from occiput.Visualization import MultipleVolumes
+from occiput.Visualization.Visualization import MultipleVolumes
 
 try:
     from ..Functional.NiftyReg import resample_image_rigid

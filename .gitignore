@@ -7,3 +7,4 @@ occiput/notebooks/.ipynb_checkpoints
 __pycache__
 .idea
 .git
+**/*.so

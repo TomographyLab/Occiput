@@ -9,8 +9,8 @@ from __future__ import absolute_import, print_function
 
 __all__ = ['PET_Interface_Petlink32']
 
-from ..simplewrap import find_c_library, localpath, load_c_library, call_c_function
-from numpy import int32, uint16, uint32, float32
+from ...Functional.SimpleWrap import find_c_library, localpath, load_c_library, call_c_function
+import numpy as np
 
 
 class ErrorInCFunction(Exception):
@@ -115,7 +115,7 @@ def petlink32_bin_addresses(filename, n_packets):
     """Extract list of bin indexes from listmode data. """
     descriptor = [{'name': 'filename', 'type': 'string', 'value': filename, 'size': len(filename)},
                   {'name': 'n_packets', 'type': 'int', 'value': n_packets},
-                  {'name': 'bin_addresses', 'type': 'array', 'value': None, 'dtype': int32, 'size': (1, n_packets)},
+                  {'name': 'bin_addresses', 'type': 'array', 'value': None, 'dtype': np.int32, 'size': (1, n_packets)},
                   {'name': 'n_prompts', 'type': 'int', 'value': None},
                   {'name': 'n_delayed', 'type': 'int', 'value': None},
                   {'name': 'n_tags', 'type': 'int', 'value': None},
@@ -137,7 +137,7 @@ def petlink32_to_static_sinogram(filename, n_packets, n_radial_bins, n_angles, n
                   {'name': 'n_radial_bins', 'type': 'int', 'value': n_radial_bins},
                   {'name': 'n_angles', 'type': 'int', 'value': n_angles},
                   {'name': 'n_sinograms', 'type': 'int', 'value': n_sinograms},
-                  {'name': 'sinogram', 'type': 'array', 'value': None, 'dtype': int32,
+                  {'name': 'sinogram', 'type': 'array', 'value': None, 'dtype': np.int32,
                    'size': (n_radial_bins, n_angles, n_sinograms)},
                   {'name': 'packets_unknown', 'type': 'int', 'value': None},
                   {'name': 'packets_prompt', 'type': 'int', 'value': None},
@@ -164,7 +164,7 @@ def petlink32_to_dynamic_projection(filename, n_packets, n_radial_bins, n_angles
                   {'name': 'n_angles', 'type': 'uint', 'value': n_angles},
                   {'name': 'n_sinograms', 'type': 'uint', 'value': n_sinograms},
                   {'name': 'n_time_bins', 'type': 'uint', 'value': len(time_bins)},
-                  {'name': 'time_bins', 'type': 'array', 'value': int32(time_bins)},
+                  {'name': 'time_bins', 'type': 'array', 'value': np.int32(time_bins)},
                   {'name': 'n_axial', 'type': 'uint', 'value': n_axial},
                   {'name': 'n_azimuthal', 'type': 'uint', 'value': n_azimuthal},
                   {'name': 'angular_step_axial', 'type': 'float', 'value': angular_step_axial},
@@ -249,9 +249,9 @@ def get_static_projection(time_bin):
                   {'name': 'size_v', 'type': 'float', 'value': None},
                   {'name': 'N_u', 'type': 'uint', 'value': None},
                   {'name': 'N_v', 'type': 'uint', 'value': None},
-                  {'name': 'offsets', 'type': 'array', 'value': None, 'dtype': uint32, 'size': (N_axial, N_azimuthal)},
-                  {'name': 'counts', 'type': 'array', 'value': None, 'dtype': float32, 'size': N_counts},
-                  {'name': 'locations', 'type': 'array', 'value': None, 'dtype': uint16, 'size': (N_counts, 3)}, ]
+                  {'name': 'offsets', 'type': 'array', 'value': None, 'dtype': np.uint32, 'size': (N_axial, N_azimuthal)},
+                  {'name': 'counts', 'type': 'array', 'value': None, 'dtype': np.float32, 'size': N_counts},
+                  {'name': 'locations', 'type': 'array', 'value': None, 'dtype': np.uint16, 'size': (N_counts, 3)}, ]
     r = call_c_function(petlink32_c.get_static_projection, descriptor)
     if not r.status == status_success():
         raise ErrorInCFunction("The execution of 'get_static_projection' was unsuccesful.", r.status,
@@ -272,7 +272,7 @@ def uncompress_static_projection(offsets, counts, locations, N_u, N_v):
                   {'name': 'offsets', 'type': 'array', 'value': offsets},
                   {'name': 'counts', 'type': 'array', 'value': counts},
                   {'name': 'locations', 'type': 'array', 'value': locations},
-                  {'name': 'projection', 'type': 'array', 'value': None, 'dtype': uint32,
+                  {'name': 'projection', 'type': 'array', 'value': None, 'dtype': np.uint32,
                    'size': (N_axial, N_azimuthal, N_u, N_v)}, ]
     r = call_c_function(petlink32_c.uncompress_static_projection, descriptor)
     if not r.status == status_success():

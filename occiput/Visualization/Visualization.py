@@ -4,14 +4,39 @@
 # Aalto University, Department of Computer Science
 
 from PIL import Image
-import numpy
+import numpy as np
 import uuid
 import h5py
+import scipy.ndimage
+import matplotlib.pyplot as plt
+from IPython.display import HTML, display, Javascript
+from ipywidgets import interact, fixed, IntSlider, FloatProgress, FloatRangeSlider
+import json
+
+# FIXME: perhaps move this somewhere else
+try:
+    import ipy_table
+
+    has_ipy_table = True
+except BaseException:
+    print("Please install ipy_table (e.g. 'easy_install ipy_table') to enable ipython notebook tables. ")
+    ipy_table = None
+    has_ipy_table = False
+
+# svg_write
+# FIXME: perhaps move this somewhere else
+try:
+    import svgwrite
+
+    has_svgwrite = True
+except BaseException:
+    print("Please install svgwrite (e.g. 'easy_install svgwrite') to enable svg visualisations. ")
+    svgwrite = None
+    has_svgwrite = False
 
 from occiput.global_settings import is_gpu_enabled
-#from DisplayNode import DisplayNode
+from .DisplayNode import DisplayNode
 from . import Colors as C
-from IPython.display import HTML, display, Javascript
 from .ipynb import is_in_ipynb
 
 try:
@@ -22,19 +47,357 @@ except:
 else:
     has_NiftyPy = True
 
+__all__ = [
+    'ProgressBar',
+    'TriplanarView',
+    'VolumeRenderer',
+    'has_svgwrite',
+    'has_ipy_table',
+    'ipy_table',
+    'svgwrite',
+    ]
+
 
 class InstallationError(Exception):
     def __init__(self, message):
         Exception.__init__(self, message)
 
 
-class ProgressBar:
+class ProgressBar():
+    def __init__(self, color=C.BLUE, title="Processing:"):
+        self._percentage = 0.0
+        self.visible = False
+        if is_in_ipynb():
+            self.set_display_mode("ipynb")
+        else:
+            self.set_display_mode("text")
+        if color == C.BLUE:
+            color_style = ''
+        elif color == C.LIGHT_BLUE:
+            color_style = 'info'
+        elif color == C.RED:
+            color_style = 'danger'
+        elif color == C.LIGHT_RED:
+            color_style = 'warning'
+        elif color == C.GREEN:
+            color_style = 'success'
+        else:
+            print('Unavailable color code. Using default "BLUE", instead. ')
+            color_style = ''
+
+        self._pb = FloatProgress(
+            value=0.0,
+            min=0,
+            max=100.0,
+            step=0.1,
+            description=title,
+            bar_style=color_style,
+            orientation='horizontal'
+        )
+
+    def show(self):
+        if self.mode == "ipynb":
+            display(self._pb)
+        self.visible = True
+
+    def set_display_mode(self, mode="ipynb"):
+        self.mode = mode
+
+    def set_percentage(self, percentage):
+        if not self.visible:
+            self.show()
+        if percentage < 0.0:
+            percentage = 0.0
+        if percentage > 100.0:
+            percentage = 100.0
+        percentage = int(percentage)
+        self._percentage = percentage
+        if self.mode == "ipynb":
+            self._pb.value = self._percentage
+        else:
+            print("%2.1f / 100" % percentage)
+
+    def get_percentage(self):
+        return self._percentage
+
+
+# TODO: add class for image fusion built on top of TriplanarView (slider
+# for alpha channel)
+
+class TriplanarView:
+    """
+    Inspect a 3D or 4D data volume, with 3 planar view in Axial,
+    Sagittal, and Coronal direction.
+    You can pass a np.ndarray, or an occiput 'ImageND' object,
+    or a 'PET_Projection' object.
+
+    Usage
+    -----
+    V = TriplanarView(volume)
+    V.show(clim=(0,15), colormap='color')
+    """
+
+    def __init__(self, volume, autotranspose=False):
+
+        if isinstance(volume, np.ndarray):
+            if autotranspose:
+                if (volume.ndim == 3) or (volume.shape[3] == 1):
+                    volume = volume.transpose(1, 0, 2)
+                    volume = np.flip(volume, 2)  # U-D
+                else:
+                    volume = volume.transpose(2, 1, 3, 0)
+                    volume = np.flip(volume, 2)  # U-D
+            self.data = volume
+            self.plottype = 'image'
+        elif isinstance(volume, ....Core.Core.ImageND):
+            volume = volume.data
+            if autotranspose:
+                if (volume.ndim == 3) or (volume.shape[3] == 1):
+                    volume = volume.transpose(1, 0, 2)
+                    volume = np.flip(volume, 2)  # U-D
+                else:
+                    volume = volume.transpose(2, 1, 3, 0)
+                    volume = np.flip(volume, 2)  # U-D
+            self.data = volume
+            self.plottype = 'image'
+        elif isinstance(volume, ....Reconstruction.PET.PET_Projection):
+            volume = volume.to_nd_array()
+            if autotranspose:
+                volume = volume.transpose(0, 2, 3, 1)
+            self.data = volume
+            self.plottype = 'projection'
+        else:
+            print("Data format unknown")
+            return
+
+        # initialise where the image handles will go
+        self.image_handles = None
+
+    def show(self, colormap=None, figsize=(20, 9), clim=None, **kwargs):
+        """
+        Plot volumetric data.
+
+        Args
+        ----
+            colormap : str
+                    - 'color': show a selection of colorful colormaps
+                    - 'mono': show a selection of monochromatic colormaps
+                    - <cmap name>: pick one from matplotlib list
+            clim : list | tuple
+                    lower and upper bound for colorbar (you will have a slider
+                    to better refine it later)
+            figsize : list | tuple
+                    The figure height and width for matplotlib, in inches.
+            mask_background : bool
+                    Whether the background should be masked (set to NA).
+                    This parameter only works in conjunction with the default
+                    plotting function (`plotting_func=None`). It finds clusters
+                    of values that round to zero and somewhere touch the edges
+                    of the image. These are set to NA. If you think you are
+                    missing data in your image, set this False.
+        """
+
+        cmp_def = ['viridis']
+        cmp_monochrome = ['binary', 'Greys', 'gist_yarg'] + \
+                         ['Blues', 'BuPu', 'PuBu', 'PuBuGn', 'BuGn'] + \
+                         ['bone', 'gray', 'afmhot', 'hot']
+        cmp_colorful = ['CMRmap',
+                        'gist_stern',
+                        'gnuplot',
+                        'gnuplot2',
+                        'terrain'] + ['jet',
+                                      'bwr',
+                                      'coolwarm',
+                                      ] + ['Spectral',
+                                           'seismic',
+                                           'BrBG',
+                                           ] + ['rainbow',
+                                                'nipy_spectral',
+                                                ]
+
+        # set default colormap options & add them to the kwargs
+        if colormap is None:
+            kwargs['colormap'] = cmp_def + ['--- monochrome ---'] + \
+                                 cmp_monochrome + ['---  colorful  ---'] + cmp_colorful
+            # kwargs['colormap'] = ['viridis'] + \
+            #    sorted(m for m in plt.cm.datad if not m.endswith("_r"))
+        elif isinstance(colormap, str):
+            # fix cmap if only one given
+            if colormap == 'mono':
+                kwargs['colormap'] = cmp_monochrome
+            elif colormap == 'color':
+                kwargs['colormap'] = cmp_def + cmp_colorful
+            else:
+                kwargs['colormap'] = fixed(colormap)
+
+        kwargs['figsize'] = fixed(figsize)
+        if self.plottype == 'projection':
+            self.views = [
+                '3D (Sagittal) Projection plane',
+                'Coronal slice projection',
+                'Axial slice projection']
+            self.directions = ['Axial_angle', 'N_u', 'N_v']
+        else:
+            self.views = ['Sagittal', 'Coronal', 'Axial']
+            self.directions = ['x', 'y', 'z']
+        self._default_plotter(clim, **kwargs)
+
+    def _default_plotter(self, clim=None, mask_background=False, **kwargs):
+        """
+        Plot three orthogonal views.
+        This is called by nifti_plotter, you shouldn't call it directly.
+        """
+        data_array = self.data
+
+        if not ((data_array.ndim == 3) or (data_array.ndim == 4)):
+            raise ValueError('Input image should be 3D or 4D')
+
+        # mask the background
+        if mask_background:
+            # TODO: add the ability to pass 'mne' to use a default brain mask
+            # TODO: split this out into a different function
+            if data_array.ndim == 3:
+                labels, n_labels = scipy.ndimage.measurements.label(
+                    (np.round(data_array) == 0))
+            else:  # 4D
+                labels, n_labels = scipy.ndimage.measurements.label(
+                    (np.round(data_array).max(axis=3) == 0)
+                )
+
+            mask_labels = [lab for lab in range(1, n_labels + 1)
+                           if (np.any(labels[[0, -1], :, :] == lab) |
+                               np.any(labels[:, [0, -1], :] == lab) |
+                               np.any(labels[:, :, [0, -1]] == lab))]
+
+            if data_array.ndim == 3:
+                data_array = np.ma.masked_where(
+                    np.isin(labels, mask_labels), data_array)
+            else:
+                data_array = np.ma.masked_where(
+                    np.broadcast_to(
+                        np.isin(labels, mask_labels)[:, :, :, np.newaxis],
+                        data_array.shape
+                    ),
+                    data_array
+                )
+
+        # init sliders for the various dimensions
+        for dim, label in enumerate(['x', 'y', 'z']):
+            if label not in kwargs.keys():
+                kwargs[label] = IntSlider(
+                    value=(data_array.shape[dim] - 1) / 2,
+                    min=0, max=data_array.shape[dim] - 1,
+                    description=self.directions[dim],
+                    continuous_update=True
+                )
+
+        if (data_array.ndim == 3) or (data_array.shape[3] == 1):
+            kwargs['t'] = fixed(0)  # time is fixed
+        else:  # 4D
+            if self.plottype == 'image':
+                desc = 'time'
+            elif self.plottype == 'projection':
+                desc = 'Azim_angle'
+            else:
+                desc = 't'
+            kwargs['t'] = IntSlider(
+                value=data_array.shape[3] // 2,
+                min=0,
+                max=data_array.shape[3] - 1,
+                description=desc,
+                continuous_update=True)
+
+        if clim is None:
+            clim = (0, data_array.max())
+        kwargs['clim'] = FloatRangeSlider(
+            value=clim,
+            min=0,
+            max=clim[1],
+            step=0.05,
+            description='Contrast',
+            disabled=False,
+            continuous_update=True,
+            orientation='horizontal',
+            readout=True,
+            readout_format='.1f',
+        )
+        interact(self._plot_slices, data=fixed(data_array), **kwargs)
+
+    def _plot_slices(self, data, x, y, z, t, clim,
+                     colormap='viridis', figsize=(15, 5)):
+        """
+        Plot x,y,z slices.
+        This function is called by _default_plotter
+        """
+
+        if self.image_handles is None:
+            self._init_figure(data, colormap, figsize, clim)
+        coords = [x, y, z]
+
+        for i, ax in enumerate(self.fig.axes):
+            ax.set_title(self.views[i])
+        for ii, imh in enumerate(self.image_handles):
+            slice_obj = 3 * [slice(None)]
+            if data.ndim == 4:
+                slice_obj += [t]
+            slice_obj[ii] = coords[ii]
+
+            # update the image
+            imh.set_data(np.flipud(np.rot90(data[slice_obj], k=1)))
+            imh.set_clim(clim)
+
+            # draw guides to show selected coordinates
+            guide_positions = [val for jj, val in enumerate(coords)
+                               if jj != ii]
+            imh.axes.lines[0].set_xdata(2 * [guide_positions[0]])
+            imh.axes.lines[1].set_ydata(2 * [guide_positions[1]])
+
+            imh.set_cmap(colormap)
+
+        return self.fig
+
+    def _init_figure(self, data, colormap, figsize, clim):
+        # init an empty list
+        self.image_handles = []
+        # open the figure
+        self.fig = plt.figure(figsize=figsize)
+        ax1 = plt.subplot2grid((2, 2), (0, 0), colspan=1)
+        ax2 = plt.subplot2grid((2, 2), (1, 0), colspan=1)
+        ax3 = plt.subplot2grid((2, 2), (0, 1), rowspan=2)
+        axes = [ax1, ax2, ax3]
+
+        for ii, ax in enumerate(axes):
+            ax.set_facecolor('black')
+            ax.tick_params(
+                axis='both', which='both', bottom='off', top='off',
+                labelbottom='off', right='off', left='off', labelleft='off'
+            )
+            # fix the axis limits
+            axis_limits = [limit for jj, limit in enumerate(data.shape[:3])
+                           if jj != ii]
+            ax.set_xlim(0, axis_limits[0])
+            ax.set_ylim(0, axis_limits[1])
+
+            img = np.zeros(axis_limits[::-1])
+            # img[1] = data_max
+            im = ax.imshow(img, cmap=colormap,
+                           vmin=0.0, vmax=clim[1])
+            # add "cross hair"
+            ax.axvline(x=0, color='gray', alpha=0.8)
+            ax.axhline(y=0, color='gray', alpha=0.8)
+            # append to image handles
+            self.image_handles.append(im)
+
+
+############################################################
+
+class ProgressBar_legacy:
     def __init__(
-        self,
-        height="6px",
-        width="100%%",
-        background_color=C.LIGHT_BLUE,
-        foreground_color=C.BLUE,
+            self,
+            height="6px",
+            width="100%%",
+            background_color=C.LIGHT_BLUE,
+            foreground_color=C.BLUE,
     ):
         self._percentage = 0.0
         self._divid = str(uuid.uuid4())
@@ -80,14 +443,14 @@ class ProgressBar:
 
 class MultipleVolumes:
     def __init__(
-        self,
-        volumes,
-        axis=0,
-        shrink=256,
-        rotate=90,
-        subsample_slices=None,
-        scales=None,
-        open_browser=None,
+            self,
+            volumes,
+            axis=0,
+            shrink=256,
+            rotate=90,
+            subsample_slices=None,
+            scales=None,
+            open_browser=None,
     ):
         self.volumes = volumes
         self._axis = axis
@@ -105,7 +468,7 @@ class MultipleVolumes:
 
     def get_data(self, volume_index):
         volume = self.volumes[volume_index]
-        if isinstance(volume, numpy.ndarray):
+        if isinstance(volume, np.ndarray):
             return volume
         else:
             # Volume type
@@ -115,15 +478,15 @@ class MultipleVolumes:
         return self.volumes[volume_index].shape
 
     def export_image(
-        self,
-        volume_index,
-        slice_index,
-        axis=0,
-        normalise=True,
-        scale=None,
-        shrink=None,
-        rotate=0,
-        global_scale=True,
+            self,
+            volume_index,
+            slice_index,
+            axis=0,
+            normalise=True,
+            scale=None,
+            shrink=None,
+            rotate=0,
+            global_scale=True,
     ):
         # FIXME: handle 4D, 5D, ..
 
@@ -131,19 +494,19 @@ class MultipleVolumes:
         m = self.get_data(volume_index).min()
 
         if axis == 0:
-            a = numpy.float32(
+            a = np.float32(
                 self.get_data(volume_index)[slice_index, :, :].reshape(
                     (self.get_shape(volume_index)[1], self.get_shape(volume_index)[2])
                 )
             )
         elif axis == 1:
-            a = numpy.float32(
+            a = np.float32(
                 self.get_data(volume_index)[:, slice_index, :].reshape(
                     (self.get_shape(volume_index)[0], self.get_shape(volume_index)[2])
                 )
             )
         else:
-            a = numpy.float32(
+            a = np.float32(
                 self.get_data(volume_index)[:, :, slice_index].reshape(
                     (self.get_shape(volume_index)[0], self.get_shape(volume_index)[1])
                 )
@@ -176,11 +539,11 @@ class MultipleVolumes:
                         a = a * scale * 512 / (M - m + 1e-9)
             blue = a
             red = a.copy()
-            red[numpy.where(red >= 0)] = 0
+            red[np.where(red >= 0)] = 0
             red = -red
-            blue[numpy.where(blue < 0)] = 0
-            green = numpy.zeros(red.shape)
-            rgb = numpy.zeros((red.shape[0], red.shape[1], 3), dtype=numpy.uint8)
+            blue[np.where(blue < 0)] = 0
+            green = np.zeros(red.shape)
+            rgb = np.zeros((red.shape[0], red.shape[1], 3), dtype=np.uint8)
             rgb[:, :, 0] = red
             rgb[:, :, 1] = green
             rgb[:, :, 2] = blue
@@ -201,18 +564,18 @@ class MultipleVolumes:
 
     # display
     def display_in_browser(
-        self, axis=None, shrink=None, rotate=None, subsample_slices=None, scales=None
+            self, axis=None, shrink=None, rotate=None, subsample_slices=None, scales=None
     ):
         self.display(axis, shrink, rotate, subsample_slices, scales, open_browser=True)
 
     def display(
-        self,
-        axis=None,
-        shrink=None,
-        rotate=None,
-        subsample_slices=None,
-        scales=None,
-        open_browser=None,
+            self,
+            axis=None,
+            shrink=None,
+            rotate=None,
+            subsample_slices=None,
+            scales=None,
+            open_browser=None,
     ):
         if axis is None:
             axis = self._axis
@@ -280,7 +643,7 @@ class MultipleVolumesNiftyPy:
 
     def get_data(self, volume_index):
         volume = self.volumes[volume_index]
-        if isinstance(volume, numpy.ndarray):
+        if isinstance(volume, np.ndarray):
             return volume
         else:
             # Image3D
@@ -318,7 +681,7 @@ class MultipleVolumesNiftyPy:
         box_max = volume.get_world_grid_max()
         span = box_max - box_min
         max_span = span.max()
-        n_points = numpy.uint32(span / max_span * max_size)
+        n_points = np.uint32(span / max_span * max_size)
         grid = volume.get_world_grid(n_points)
         n = 0
         images = []
@@ -329,19 +692,19 @@ class MultipleVolumesNiftyPy:
             sequence = []
             for slice_index in range(n_points[axis]):
                 if axis == 0:
-                    a = numpy.float32(
+                    a = np.float32(
                         resampled[slice_index, :, :].reshape(
                             (resampled.shape[1], resampled.shape[2])
                         )
                     )
                 elif axis == 1:
-                    a = numpy.float32(
+                    a = np.float32(
                         resampled[:, slice_index, :].reshape(
                             (resampled.shape[0], resampled.shape[2])
                         )
                     )
                 else:
-                    a = numpy.float32(
+                    a = np.float32(
                         resampled[:, :, slice_index].reshape(
                             (resampled.shape[0], resampled.shape[1])
                         )
@@ -362,7 +725,7 @@ class MultipleVolumesNiftyPy:
     def __array_to_im(self, a, lookup_table):
         if lookup_table is not None:
             red, green, blue, alpha = lookup_table.convert_ndarray_to_rgba(a)
-            rgb = numpy.zeros((a.shape[0], a.shape[1], 3), dtype=numpy.uint8)
+            rgb = np.zeros((a.shape[0], a.shape[1], 3), dtype=np.uint8)
             rgb[:, :, 0] = red
             rgb[:, :, 1] = green
             rgb[:, :, 2] = blue
@@ -376,11 +739,11 @@ class MultipleVolumesNiftyPy:
 
 
 def deg_to_rad(deg):
-    return deg * numpy.pi / 180.0
+    return deg * np.pi / 180.0
 
 
 def rad_to_deg(rad):
-    return rad * 180.0 / numpy.pi
+    return rad * 180.0 / np.pi
 
 
 class SPECT_Projection:
@@ -406,7 +769,7 @@ class SPECT_Projection:
     def to_image(self, data, index=0, scale=None, absolute_scale=False):
         from PIL import Image
 
-        a = numpy.float32(data[:, :, index].reshape((data.shape[0], data.shape[1])))
+        a = np.float32(data[:, :, index].reshape((data.shape[0], data.shape[1])))
         if scale is None:
             a = 255.0 * (a) / (a.max() + 1e-12)
         else:
@@ -440,8 +803,8 @@ class SPECT_Projection:
         N_y = self.data.shape[1]
         print(
             (
-                "SPECT Projection   [N_projections: %d   N_x: %d   N_y: %d]"
-                % (N_projections, N_x, N_y)
+                    "SPECT Projection   [N_projections: %d   N_x: %d   N_y: %d]"
+                    % (N_projections, N_x, N_y)
             )
         )
         for i in range(N_projections):
@@ -456,15 +819,15 @@ class SPECT_Projection:
 
 class VolumeRenderer:
     def __init__(
-        self,
-        volume,
-        theta_min_deg=0.0,
-        theta_max_deg=360.0,
-        n_positions=180,
-        truncate_negative=False,
-        psf=None,
-        attenuation=None,
-        scale=1.0,
+            self,
+            volume,
+            theta_min_deg=0.0,
+            theta_max_deg=360.0,
+            n_positions=180,
+            truncate_negative=False,
+            psf=None,
+            attenuation=None,
+            scale=1.0,
     ):
         self.volume = volume
         self.psf = psf
@@ -477,12 +840,12 @@ class VolumeRenderer:
         self.scale = scale
 
     def __make_cameras(self, axis, direction):
-        # self.cameras = numpy.float32(numpy.linspace(deg_to_rad(self.theta_min_deg),deg_to_rad(self.theta_max_deg),self.n_positions).reshape((self.n_positions,1)))
-        self.cameras = numpy.zeros((self.n_positions, 3), dtype=numpy.float32)
+        # self.cameras = np.float32(np.linspace(deg_to_rad(self.theta_min_deg),deg_to_rad(self.theta_max_deg),self.n_positions).reshape((self.n_positions,1)))
+        self.cameras = np.zeros((self.n_positions, 3), dtype=np.float32)
         self.cameras[:, 0] = self.cameras[:, 0] + deg_to_rad(axis[0])
         self.cameras[:, 1] = self.cameras[:, 0] + deg_to_rad(axis[1])
         self.cameras[:, 2] = self.cameras[:, 0] + deg_to_rad(axis[2])
-        self.cameras[:, direction] = numpy.linspace(
+        self.cameras[:, direction] = np.linspace(
             deg_to_rad(self.theta_min_deg),
             deg_to_rad(self.theta_max_deg),
             self.n_positions,
@@ -498,10 +861,10 @@ class VolumeRenderer:
             box_max = volume.get_world_grid_max()
             span = box_max - box_min
             max_span = span.max()
-            n_points = numpy.uint32(span / max_span * max_n_points)
+            n_points = np.uint32(span / max_span * max_n_points)
             grid = volume.get_world_grid(n_points)
             volume.compute_resample_on_grid(grid)
-            volume = numpy.float32(volume.data)
+            volume = np.float32(volume.data)
         else:
             volume = self.volume
         self.__make_cameras(axis, direction)
@@ -683,9 +1046,6 @@ function tick() {
 """
 
 
-import json
-
-
 class Graph:
     def __init__(self, graph):
         self.set_graph(graph)
@@ -703,33 +1063,3 @@ class Graph:
     def _repr_html_(self):
         graph = HTML(self.get_html())
         return graph._repr_html_()
-
-
-## ipy_table
-# FIXME: perhaps move this somewhere else
-
-try:
-    import ipy_table
-
-    has_ipy_table = True
-except:
-    print(
-        "Please install ipy_table (e.g. 'easy_install ipy_table') to enable ipython notebook tables. "
-    )
-    ipy_table = None
-    has_ipy_table = False
-
-
-## svg_write
-# FIXME: perhaps move this somewhere else
-
-try:
-    import svgwrite
-
-    has_svgwrite = True
-except:
-    print(
-        "Please install svgwrite (e.g. 'easy_install svgwrite') to enable svg visualisations. "
-    )
-    svgwrite = None
-    has_svgwrite = False
